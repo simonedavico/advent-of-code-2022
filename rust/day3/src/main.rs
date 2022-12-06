@@ -9,13 +9,11 @@ fn priority_for_item_type(item_type: char) -> u8 {
 }
 
 fn find_common_item(buckets: &[&str]) -> char {
-    *buckets
+    buckets
         .iter()
         .map(|b| b.chars().collect::<HashSet<_>>())
         .reduce(|acc, set| &acc & &set)
-        .unwrap_or_else(|| panic!("No common item found!"))
-        .iter()
-        .next()
+        .and_then(|set| set.into_iter().next())
         .unwrap_or_else(|| panic!("No common item found!"))
 }
 
