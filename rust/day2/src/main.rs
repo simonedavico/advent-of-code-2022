@@ -42,7 +42,8 @@ fn parse_my_move(opponent_move: &str) -> Shape {
     }
 }
 
-fn compute_score_for_strategy() -> i32 {
+// part one
+fn compute_score_for_moves() -> i32 {
     STRATEGY
         .lines()
         .map(|line| {
@@ -52,8 +53,46 @@ fn compute_score_for_strategy() -> i32 {
         .sum()
 }
 
+// part two
+fn parse_outcome(outcome: &str) -> Outcome {
+    match outcome {
+        "X" => Outcome::Loss,
+        "Y" => Outcome::Draw,
+        "Z" => Outcome::Win,
+        o => panic!("Unrecognized outcome! ({o})"),
+    }
+}
+
+fn compute_score_from_outcome(opponent_move: Shape, outcome: Outcome) -> i32 {
+    let my_move = match (opponent_move, &outcome) {
+        (Shape::Rock, Outcome::Win) => Shape::Paper,
+        (Shape::Rock, Outcome::Loss) => Shape::Scissors,
+        (Shape::Scissors, Outcome::Win) => Shape::Rock,
+        (Shape::Scissors, Outcome::Loss) => Shape::Paper,
+        (Shape::Paper, Outcome::Win) => Shape::Scissors,
+        (Shape::Paper, Outcome::Loss) => Shape::Rock,
+        (mv, Outcome::Draw) => mv,
+    };
+
+    outcome as i32 + my_move as i32
+}
+
+fn compute_score_for_move_and_outcome() -> i32 {
+    STRATEGY
+        .lines()
+        .map(|line| {
+            let (opp, outc) = line.split_once(" ").unwrap();
+            compute_score_from_outcome(parse_opponent_move(opp), parse_outcome(outc))
+        })
+        .sum()
+}
+
 fn main() {
-    println!("{}", compute_score_for_strategy());
+    println!("Score for moves: {}", compute_score_for_moves());
+    println!(
+        "Score for move and outcome: {}",
+        compute_score_for_move_and_outcome()
+    );
 }
 
 #[cfg(test)]
@@ -62,7 +101,12 @@ mod tests {
 
     #[test]
     fn computes_score_for_strategy() {
-        assert_eq!(compute_score_for_strategy(), 10595);
+        assert_eq!(compute_score_for_moves(), 10595);
+    }
+
+    #[test]
+    fn computes_score_for_move_and_outcome() {
+        assert_eq!(compute_score_for_move_and_outcome(), 9541);
     }
 }
 
