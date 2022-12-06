@@ -11,8 +11,8 @@ fn priority_for_item_type(item_type: char) -> u8 {
 fn find_common_item(rucksack: &str) -> char {
     let half = rucksack.len() / 2;
 
-    let first_comparment = &rucksack[..half].chars().collect::<HashSet<char>>();
-    let second_compartment = &rucksack[half..].chars().collect::<HashSet<char>>();
+    let first_comparment = &rucksack[..half].chars().collect::<HashSet<_>>();
+    let second_compartment = &rucksack[half..].chars().collect::<HashSet<_>>();
 
     let common_item = first_comparment
         .intersection(second_compartment)
@@ -22,6 +22,7 @@ fn find_common_item(rucksack: &str) -> char {
     *common_item
 }
 
+// part one
 fn sum_of_priorities() -> i16 {
     RUCKSACKS
         .lines()
@@ -33,8 +34,33 @@ fn sum_of_priorities() -> i16 {
         .sum()
 }
 
+// part two
+fn find_common_item_2(buckets: &[&str]) -> char {
+    *buckets
+        .iter()
+        .map(|b| b.chars().collect::<HashSet<_>>())
+        .reduce(|acc, set| &acc & &set)
+        .unwrap_or_else(|| panic!("No common item found!"))
+        .iter()
+        .next()
+        .unwrap_or_else(|| panic!("No common item found!"))
+}
+
+fn sum_of_group_priorities() -> i16 {
+    RUCKSACKS
+        .lines()
+        .collect::<Vec<_>>()
+        .chunks(3)
+        .map(|group| {
+            let group_key = find_common_item_2(group);
+            priority_for_item_type(group_key) as i16
+        })
+        .sum()
+}
+
 fn main() {
     println!("Result: {}", sum_of_priorities());
+    println!("Group: {}", sum_of_group_priorities());
 }
 
 #[cfg(test)]
@@ -52,6 +78,16 @@ mod tests {
     #[test]
     fn returns_sum_of_priorities() {
         assert_eq!(sum_of_priorities(), 7428);
+    }
+
+    #[test]
+    fn returns_common_item() {
+        assert_eq!(find_common_item_2(&["abc", "cde", "zyxc"]), 'c');
+    }
+
+    #[test]
+    fn returns_sum_of_group_keys() {
+        assert_eq!(sum_of_group_priorities(), 2650);
     }
 }
 
