@@ -24,10 +24,10 @@ fn sum_of_priorities() -> i16 {
         .map(|rucksack| {
             // assume even number of items in rucksack
             let half = rucksack.len() / 2;
-            let first_comparment = &rucksack[..half];
+            let first_compartment = &rucksack[..half];
             let second_compartment = &rucksack[half..];
 
-            let item = find_common_item(&[first_comparment, second_compartment]);
+            let item = find_common_item(&[first_compartment, second_compartment]);
             priority_for_item_type(item) as i16
         })
         .sum()
