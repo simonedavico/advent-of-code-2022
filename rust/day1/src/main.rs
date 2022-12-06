@@ -1,5 +1,6 @@
-fn main() {
-    let max_calories = ELVES
+// part one
+fn get_max_calories() -> u32 {
+    ELVES
         .split_terminator("\n\n")
         .map(|elf| {
             elf.split("\n")
@@ -7,9 +8,26 @@ fn main() {
                 .sum::<u32>()
         })
         .max()
-        .expect("Not handling empty elves 🙃");
+        .expect("Not handling empty elves 🙃")
+}
 
-    println!("{}", max_calories);
+// part two
+fn get_sum_of_three_with_most_calories() -> u32 {
+    let mut calories = ELVES
+        .split_terminator("\n\n")
+        .map(|elf| {
+            elf.split("\n")
+                .map(|item| item.parse::<u32>().unwrap_or(0))
+                .sum::<u32>()
+        })
+        .collect::<Vec<u32>>();
+
+    calories.sort_by(|a, b| b.cmp(a));
+    calories[..3].into_iter().sum()
+}
+
+fn main() {
+    println!("{}", get_sum_of_three_with_most_calories());
 }
 
 const ELVES: &str = "\
