@@ -8,34 +8,7 @@ fn priority_for_item_type(item_type: char) -> u8 {
     }
 }
 
-fn find_common_item(rucksack: &str) -> char {
-    let half = rucksack.len() / 2;
-
-    let first_comparment = &rucksack[..half].chars().collect::<HashSet<_>>();
-    let second_compartment = &rucksack[half..].chars().collect::<HashSet<_>>();
-
-    let common_item = first_comparment
-        .intersection(second_compartment)
-        .next()
-        .unwrap_or_else(|| panic!("No common item found in rucksack: {}", rucksack));
-
-    *common_item
-}
-
-// part one
-fn sum_of_priorities() -> i16 {
-    RUCKSACKS
-        .lines()
-        .map(|rucksack| {
-            // find priority for rucksack
-            let item = find_common_item(rucksack);
-            priority_for_item_type(item) as i16
-        })
-        .sum()
-}
-
-// part two
-fn find_common_item_2(buckets: &[&str]) -> char {
+fn find_common_item(buckets: &[&str]) -> char {
     *buckets
         .iter()
         .map(|b| b.chars().collect::<HashSet<_>>())
@@ -46,13 +19,30 @@ fn find_common_item_2(buckets: &[&str]) -> char {
         .unwrap_or_else(|| panic!("No common item found!"))
 }
 
+// part one
+fn sum_of_priorities() -> i16 {
+    RUCKSACKS
+        .lines()
+        .map(|rucksack| {
+            // assume even number of items in rucksack
+            let half = rucksack.len() / 2;
+            let first_comparment = &rucksack[..half];
+            let second_compartment = &rucksack[half..];
+
+            let item = find_common_item(&[first_comparment, second_compartment]);
+            priority_for_item_type(item) as i16
+        })
+        .sum()
+}
+
+// part two
 fn sum_of_group_priorities() -> i16 {
     RUCKSACKS
         .lines()
         .collect::<Vec<_>>()
         .chunks(3)
         .map(|group| {
-            let group_key = find_common_item_2(group);
+            let group_key = find_common_item(group);
             priority_for_item_type(group_key) as i16
         })
         .sum()
@@ -82,7 +72,7 @@ mod tests {
 
     #[test]
     fn returns_common_item() {
-        assert_eq!(find_common_item_2(&["abc", "cde", "zyxc"]), 'c');
+        assert_eq!(find_common_item(&["abc", "cde", "zyxc"]), 'c');
     }
 
     #[test]
