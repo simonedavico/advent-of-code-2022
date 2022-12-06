@@ -30,6 +30,21 @@ fn main() {
     println!("{}", get_sum_of_three_with_most_calories());
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn returns_max_calories() {
+        assert_eq!(get_max_calories(), 71471);
+    }
+
+    #[test]
+    fn returns_sum_of_three_with_most_calories() {
+        assert_eq!(get_sum_of_three_with_most_calories(), 211189);
+    }
+}
+
 const ELVES: &str = "\
 8417
 8501
