@@ -1,8 +1,14 @@
+// part one
 fn range_includes(range_a: (i32, i32), range_b: (i32, i32)) -> bool {
     range_a.0 >= range_b.0 && range_a.1 <= range_b.1
 }
 
-fn count_included_ranges() -> usize {
+// part two
+fn range_overlaps(range_a: (i32, i32), range_b: (i32, i32)) -> bool {
+    (range_a.0 <= range_b.1) && (range_a.1 >= range_b.0)
+}
+
+fn verify_ranges(check: fn((i32, i32), (i32, i32)) -> bool) -> usize {
     ASSIGNMENT_PAIRS
         .lines()
         .filter(|line| {
@@ -20,13 +26,14 @@ fn count_included_ranges() -> usize {
                 .map(|n| n.parse::<i32>().expect("oh noes"))
                 .collect::<Vec<_>>();
 
-            range_includes((a[0], a[1]), (b[0], b[1])) || range_includes((b[0], b[1]), (a[0], a[1]))
+            check((a[0], a[1]), (b[0], b[1])) || range_includes((b[0], b[1]), (a[0], a[1]))
         })
         .count()
 }
 
 fn main() {
-    println!("Result: {}", count_included_ranges());
+    println!("Included: {}", verify_ranges(range_includes));
+    println!("Overlapping: {}", verify_ranges(range_overlaps));
 }
 
 #[cfg(test)]
@@ -35,7 +42,12 @@ mod tests {
 
     #[test]
     fn returns_count_of_included_ranges() {
-        assert_eq!(count_included_ranges(), 466);
+        assert_eq!(verify_ranges(range_includes), 466);
+    }
+
+    #[test]
+    fn returns_count_of_overlapping_ranges() {
+        assert_eq!(verify_ranges(range_overlaps), 865);
     }
 }
 
