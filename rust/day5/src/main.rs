@@ -10,52 +10,55 @@ pub struct Move {
     to_stack: usize,
 }
 
-enum CraneModel {
-    CRATEMOVER9000,
-    CRATEMOVER9001,
-}
-
 pub trait CrateMover {
     fn interpret_move(&self, a_move: &Move, stacks: &mut Vec<Vec<&str>>) -> ();
 }
 
-impl CrateMover for CraneModel {
+struct CrateMover9000;
+struct CrateMover9001;
+
+impl CrateMover for CrateMover9000 {
     fn interpret_move(&self, a_move: &Move, stacks: &mut Vec<Vec<&str>>) -> () {
         let remove_from = stacks.get_mut(a_move.from_stack - 1).unwrap();
         let slice_start_index = remove_from.len() - a_move.quantity;
         let to_add = remove_from.drain(slice_start_index..).collect::<Vec<_>>();
         let add_to = stacks.get_mut(a_move.to_stack - 1).unwrap();
 
-        match &self {
-            CraneModel::CRATEMOVER9000 => {
-                for item in to_add.iter().rev() {
-                    add_to.push(item);
-                }
-            }
-            CraneModel::CRATEMOVER9001 => {
-                for item in to_add.iter() {
-                    add_to.push(item);
-                }
-            }
+        for item in to_add.iter().rev() {
+            add_to.push(item);
+        }
+    }
+}
+
+impl CrateMover for CrateMover9001 {
+    fn interpret_move(&self, a_move: &Move, stacks: &mut Vec<Vec<&str>>) -> () {
+        let remove_from = stacks.get_mut(a_move.from_stack - 1).unwrap();
+        let slice_start_index = remove_from.len() - a_move.quantity;
+        let to_add = remove_from.drain(slice_start_index..).collect::<Vec<_>>();
+        let add_to = stacks.get_mut(a_move.to_stack - 1).unwrap();
+
+        for item in to_add.iter() {
+            add_to.push(item);
         }
     }
 }
 
 fn main() -> io::Result<()> {
-    let result_9000 = move_crane(CraneModel::CRATEMOVER9000);
-    let result_9001 = move_crane(CraneModel::CRATEMOVER9001);
+    let result_9000 = move_crane(&CrateMover9000 {});
+    let result_9001 = move_crane(&CrateMover9001 {});
     println!("{}", result_9000);
     println!("{}", result_9001);
     Ok(())
 }
 
-fn move_crane(crane_model: CraneModel) -> String {
+// see https://oswalt.dev/2021/06/polymorphism-in-rust/ for signature explanation
+fn move_crane(crate_mover: &dyn CrateMover) -> String {
     let (crates, moves) = CRATES.split_once("\n\n").unwrap();
     let mut stacks = parse_stacks(crates);
     let moves = parse_moves(moves);
 
     moves.iter().for_each(|m| {
-        crane_model.interpret_move(m, &mut stacks);
+        crate_mover.interpret_move(m, &mut stacks);
     });
 
     stacks
@@ -123,12 +126,12 @@ mod tests {
 
     #[test]
     fn part_1() {
-        assert_eq!(move_crane(CraneModel::CRATEMOVER9000), "VQZNJMWTR");
+        assert_eq!(move_crane(&CrateMover9000 {}), "VQZNJMWTR");
     }
 
     #[test]
     fn part_2() {
-        assert_eq!(move_crane(CraneModel::CRATEMOVER9001), "NLCDCLVMQ");
+        assert_eq!(move_crane(&CrateMover9001 {}), "NLCDCLVMQ");
     }
 }
 
