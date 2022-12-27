@@ -1,4 +1,4 @@
-use std::ops::IndexMut;
+use std::{io, ops::IndexMut};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -10,46 +10,37 @@ struct Move {
     to_stack: usize,
 }
 
-fn main() {
-    println!("Hello, world!");
+fn main() -> io::Result<()> {
+    let result = move_crane();
+    println!("{}", result);
+    Ok(())
+}
 
-    if let Some((crates, moves)) = CRATES.split_once("\n\n") {
-        let mut stacks = parse_stacks(crates);
-        let moves = parse_moves(moves);
+fn move_crane() -> String {
+    let (crates, moves) = CRATES.split_once("\n\n").unwrap();
+    let mut stacks = parse_stacks(crates);
+    let moves = parse_moves(moves);
 
-        moves.iter().for_each(|m| {
-            interpret_move(m, &mut stacks);
-        })
-    }
+    moves.iter().for_each(|m| {
+        interpret_move(m, &mut stacks);
+    });
+
+    stacks
+        .iter()
+        .map(|s| *s.last().unwrap())
+        .collect::<Vec<_>>()
+        .join("")
 }
 
 fn interpret_move(a_move: &Move, stacks: &mut Vec<Vec<&str>>) -> () {
-    println!("{:?}", a_move);
+    let remove_from = stacks.get_mut(a_move.from_stack - 1).unwrap();
+    let slice_start_index = remove_from.len() - a_move.quantity;
+    let to_add = remove_from.drain(slice_start_index..).collect::<Vec<_>>();
+    let add_to = stacks.get_mut(a_move.to_stack - 1).unwrap();
 
-    let mut remove_from = stacks.get_mut(a_move.from_stack - 1).unwrap();
-    let mut add_to = stacks.get_mut(a_move.to_stack - 1).unwrap();
-
-    remove_from.drain(..a_move.quantity).collect::<Vec<_>>()
-
-    // let removed_items = stacks
-    //     .get_mut(a_move.from_stack - 1)
-    //     .unwrap()
-    //     .drain(..a_move.quantity);
-
-    // stacks
-    //     .get_mut(a_move.to_stack - 1)
-    //     .unwrap()
-    //     .extend_from_slice(removed_items.as_slice());
-
-    // println!("{:?}", removed_items);
-
-    // removed_items.
-
-    // let add_to = stacks.get_mut(a_move.to_stack - 1).unwrap();
-    // println!("{:?}", stacks.get_mut(2).unwrap());
-    // for i in 0..a_move.quantity {
-    //     println!("{}", i);
-    // }
+    for item in to_add.iter().rev() {
+        add_to.push(item);
+    }
 }
 
 fn parse_moves(moves: &str) -> Vec<Move> {
@@ -83,7 +74,7 @@ fn parse_moves(moves: &str) -> Vec<Move> {
 fn parse_stacks(crates: &str) -> Vec<Vec<&str>> {
     lazy_static! {
         static ref INDEXES: Regex = Regex::new(r"\s+(\d)").unwrap();
-        static ref CRATES_LINE: Regex = Regex::new(r"\s{3}|\[([A-Z])\]\s?").unwrap();
+        static ref CRATES_LINE: Regex = Regex::new(r"(\s{3}|\[([A-Z])\])\s?").unwrap();
     }
 
     let num_of_stacks = crates
@@ -95,10 +86,8 @@ fn parse_stacks(crates: &str) -> Vec<Vec<&str>> {
     let mut stacks: Vec<Vec<&str>> = vec![Vec::<&str>::new(); num_of_stacks];
 
     for line in crates.lines().rev().skip(1) {
-        let foo = CRATES_LINE.captures_iter(line);
-
-        for (index, capture) in foo.enumerate() {
-            if let Some(item) = capture.get(1).map(|c| c.as_str()) {
+        for (index, capture) in CRATES_LINE.captures_iter(line).enumerate() {
+            if let Some(item) = capture.get(2).map(|c| c.as_str()) {
                 stacks.index_mut(index).push(item);
             }
         }
@@ -106,7 +95,17 @@ fn parse_stacks(crates: &str) -> Vec<Vec<&str>> {
     stacks
 }
 
-const CRATES: &str = "            [L] [M]         [M]    
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn returns_items_on_top() {
+        assert_eq!(move_crane(), "VQZNJMWTR");
+    }
+}
+
+const CRATES: &str = "            [L] [M]         [M]
         [D] [R] [Z]         [C] [L]
         [C] [S] [T] [G]     [V] [M]
 [R]     [L] [Q] [B] [B]     [D] [F]
