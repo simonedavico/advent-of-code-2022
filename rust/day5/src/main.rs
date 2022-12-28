@@ -11,7 +11,13 @@ pub struct Move {
 }
 
 pub trait CrateMover {
+    // TODO: this should return a Result<(), BadMoveError>
     fn interpret_move(&self, a_move: &Move, stacks: &mut Vec<Vec<&str>>) -> ();
+}
+
+#[derive(Debug)]
+enum MoveCratesError {
+    BadInput
 }
 
 struct CrateMover9000;
@@ -46,29 +52,32 @@ impl CrateMover for CrateMover9001 {
 fn main() -> io::Result<()> {
     let result_9000 = move_crane(&CrateMover9000 {});
     let result_9001 = move_crane(&CrateMover9001 {});
-    println!("{}", result_9000);
-    println!("{}", result_9001);
+    println!("{}", result_9000.unwrap());
+    println!("{}", result_9001.unwrap());
     Ok(())
 }
 
 // see https://oswalt.dev/2021/06/polymorphism-in-rust/ for signature explanation
-fn move_crane(crate_mover: &dyn CrateMover) -> String {
-    let (crates, moves) = CRATES.split_once("\n\n").unwrap();
-    let mut stacks = parse_stacks(crates);
-    let moves = parse_moves(moves);
+fn move_crane(crate_mover: &dyn CrateMover) -> Result<String, MoveCratesError> {
+    if let Some((crates, moves)) = CRATES.split_once("\n\n") {
+        let mut stacks = parse_stacks(crates);
+        let moves = parse_moves(moves).unwrap();
 
-    moves.iter().for_each(|m| {
-        crate_mover.interpret_move(m, &mut stacks);
-    });
+        moves.iter().for_each(|m| {
+            crate_mover.interpret_move(m, &mut stacks);
+        });
 
-    stacks
-        .iter()
-        .map(|s| *s.last().unwrap())
-        .collect::<Vec<_>>()
-        .join("")
+        Ok(stacks
+            .iter()
+            .map(|s| *s.last().unwrap())
+            .collect::<Vec<_>>()
+            .join(""))
+    } else {
+        Err(MoveCratesError::BadInput)
+    }
 }
 
-fn parse_moves(moves: &str) -> Vec<Move> {
+fn parse_moves(moves: &str) -> Result<Vec<Move>, MoveCratesError> {
     lazy_static! {
         static ref MOVES: Regex =
             Regex::new(r"move (?P<qty>\d+) from (?P<from_stack>\d) to (?P<to_stack>\d)").unwrap();
@@ -77,23 +86,36 @@ fn parse_moves(moves: &str) -> Vec<Move> {
     moves
         .lines()
         .map(|m| {
-            let moves_captures = MOVES.captures(m).unwrap();
-            Move {
-                quantity: moves_captures
-                    .name("qty")
-                    .and_then(|c| c.as_str().parse::<usize>().ok())
-                    .unwrap(),
-                from_stack: moves_captures
-                    .name("from_stack")
-                    .and_then(|c| c.as_str().parse::<usize>().ok())
-                    .unwrap(),
-                to_stack: moves_captures
-                    .name("to_stack")
-                    .and_then(|c| c.as_str().parse::<usize>().ok())
-                    .unwrap(),
-            }
+            MOVES
+                .captures(m)
+                .map_or(Err(MoveCratesError::BadInput), |moves_captures| {
+                    Ok(moves_captures)
+                })
+                .and_then(|capture| {
+                    if let (Some(quantity), Some(from_stack), Some(to_stack)) = (
+                        capture
+                            .name("qty")
+                            .and_then(|c| c.as_str().parse::<usize>().ok()),
+                        capture
+                            .name("from_stack")
+                            .and_then(|c| c.as_str().parse::<usize>().ok()),
+                        capture
+                            .name("to_stack")
+                            .and_then(|c| c.as_str().parse::<usize>().ok()),
+                    ) {
+                        Ok(Move {
+                            quantity,
+                            from_stack,
+                            to_stack,
+                        })
+                    } else {
+                        Err(MoveCratesError::BadInput)
+                    }
+                })
         })
-        .collect::<Vec<_>>()
+        // transforms Vec<Result<..., ...>> into Result<Vec<...>, ...>
+        .into_iter()
+        .collect::<Result<Vec<Move>, MoveCratesError>>()
 }
 
 fn parse_stacks(crates: &str) -> Vec<Vec<&str>> {
@@ -126,12 +148,12 @@ mod tests {
 
     #[test]
     fn part_1() {
-        assert_eq!(move_crane(&CrateMover9000 {}), "VQZNJMWTR");
+        assert_eq!(move_crane(&CrateMover9000 {}).unwrap(), "VQZNJMWTR");
     }
 
     #[test]
     fn part_2() {
-        assert_eq!(move_crane(&CrateMover9001 {}), "NLCDCLVMQ");
+        assert_eq!(move_crane(&CrateMover9001 {}).unwrap(), "NLCDCLVMQ");
     }
 }
 
