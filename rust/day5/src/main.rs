@@ -10,14 +10,52 @@ pub struct Move {
     to_stack: usize,
 }
 
+impl TryFrom<&str> for Move {
+    type Error = MoveCratesError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        lazy_static! {
+            static ref MOVES: Regex =
+                Regex::new(r"move (?P<qty>\d+) from (?P<from_stack>\d) to (?P<to_stack>\d)")
+                    .unwrap();
+        }
+        MOVES
+            .captures(value)
+            .map_or(Err(MoveCratesError::BadInput), |moves_captures| {
+                Ok(moves_captures)
+            })
+            .and_then(|capture| {
+                if let (Some(quantity), Some(from_stack), Some(to_stack)) = (
+                    capture
+                        .name("qty")
+                        .and_then(|c| c.as_str().parse::<usize>().ok()),
+                    capture
+                        .name("from_stack")
+                        .and_then(|c| c.as_str().parse::<usize>().ok()),
+                    capture
+                        .name("to_stack")
+                        .and_then(|c| c.as_str().parse::<usize>().ok()),
+                ) {
+                    Ok(Self {
+                        quantity,
+                        from_stack,
+                        to_stack,
+                    })
+                } else {
+                    Err(Self::Error::BadInput)
+                }
+            })
+    }
+}
+
 pub trait CrateMover {
     // TODO: this should return a Result<(), BadMoveError>
     fn interpret_move(&self, a_move: &Move, stacks: &mut Vec<Vec<&str>>) -> ();
 }
 
 #[derive(Debug)]
-enum MoveCratesError {
-    BadInput
+pub enum MoveCratesError {
+    BadInput,
 }
 
 struct CrateMover9000;
@@ -78,41 +116,9 @@ fn move_crane(crate_mover: &dyn CrateMover) -> Result<String, MoveCratesError> {
 }
 
 fn parse_moves(moves: &str) -> Result<Vec<Move>, MoveCratesError> {
-    lazy_static! {
-        static ref MOVES: Regex =
-            Regex::new(r"move (?P<qty>\d+) from (?P<from_stack>\d) to (?P<to_stack>\d)").unwrap();
-    }
-
     moves
         .lines()
-        .map(|m| {
-            MOVES
-                .captures(m)
-                .map_or(Err(MoveCratesError::BadInput), |moves_captures| {
-                    Ok(moves_captures)
-                })
-                .and_then(|capture| {
-                    if let (Some(quantity), Some(from_stack), Some(to_stack)) = (
-                        capture
-                            .name("qty")
-                            .and_then(|c| c.as_str().parse::<usize>().ok()),
-                        capture
-                            .name("from_stack")
-                            .and_then(|c| c.as_str().parse::<usize>().ok()),
-                        capture
-                            .name("to_stack")
-                            .and_then(|c| c.as_str().parse::<usize>().ok()),
-                    ) {
-                        Ok(Move {
-                            quantity,
-                            from_stack,
-                            to_stack,
-                        })
-                    } else {
-                        Err(MoveCratesError::BadInput)
-                    }
-                })
-        })
+        .map(Move::try_from)
         // transforms Vec<Result<..., ...>> into Result<Vec<...>, ...>
         .into_iter()
         .collect::<Result<Vec<Move>, MoveCratesError>>()
