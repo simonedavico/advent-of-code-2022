@@ -50,7 +50,11 @@ impl TryFrom<&str> for Move {
 
 pub trait CrateMover {
     // TODO: this should return a Result<(), BadMoveError>
-    fn interpret_move(&self, a_move: &Move, stacks: &mut Vec<Vec<&str>>) -> ();
+    fn interpret_move(
+        &self,
+        a_move: &Move,
+        stacks: &mut Vec<Vec<&str>>,
+    ) -> Result<(), MoveCratesError>;
 }
 
 #[derive(Debug)]
@@ -62,28 +66,62 @@ struct CrateMover9000;
 struct CrateMover9001;
 
 impl CrateMover for CrateMover9000 {
-    fn interpret_move(&self, a_move: &Move, stacks: &mut Vec<Vec<&str>>) -> () {
-        let remove_from = stacks.get_mut(a_move.from_stack - 1).unwrap();
-        let slice_start_index = remove_from.len() - a_move.quantity;
-        let to_add = remove_from.drain(slice_start_index..).collect::<Vec<_>>();
-        let add_to = stacks.get_mut(a_move.to_stack - 1).unwrap();
+    fn interpret_move(
+        &self,
+        a_move: &Move,
+        stacks: &mut Vec<Vec<&str>>,
+    ) -> Result<(), MoveCratesError> {
+        let remove_from = stacks
+            .get_mut(a_move.from_stack - 1)
+            .ok_or(MoveCratesError::BadInput)?;
+
+        let to_add = if a_move.quantity <= remove_from.len() {
+            let slice_start_index = remove_from.len() - a_move.quantity;
+            let to_add = remove_from.drain(slice_start_index..).collect::<Vec<_>>();
+            Ok(to_add)
+        } else {
+            Err(MoveCratesError::BadInput)
+        }?;
+
+        let add_to = stacks
+            .get_mut(a_move.to_stack - 1)
+            .ok_or(MoveCratesError::BadInput)?;
 
         for item in to_add.iter().rev() {
             add_to.push(item);
         }
+
+        Ok(())
     }
 }
 
 impl CrateMover for CrateMover9001 {
-    fn interpret_move(&self, a_move: &Move, stacks: &mut Vec<Vec<&str>>) -> () {
-        let remove_from = stacks.get_mut(a_move.from_stack - 1).unwrap();
-        let slice_start_index = remove_from.len() - a_move.quantity;
-        let to_add = remove_from.drain(slice_start_index..).collect::<Vec<_>>();
-        let add_to = stacks.get_mut(a_move.to_stack - 1).unwrap();
+    fn interpret_move(
+        &self,
+        a_move: &Move,
+        stacks: &mut Vec<Vec<&str>>,
+    ) -> Result<(), MoveCratesError> {
+        let remove_from = stacks
+            .get_mut(a_move.from_stack - 1)
+            .ok_or(MoveCratesError::BadInput)?;
+
+        let to_add = if a_move.quantity <= remove_from.len() {
+            let slice_start_index = remove_from.len() - a_move.quantity;
+            let to_add = remove_from.drain(slice_start_index..).collect::<Vec<_>>();
+            Ok(to_add)
+        } else {
+            Err(MoveCratesError::BadInput)
+        }?;
+
+        let add_to = stacks
+            .get_mut(a_move.to_stack - 1)
+            .ok_or(MoveCratesError::BadInput)?;
 
         for item in to_add.iter() {
             add_to.push(item);
         }
+
+        Ok(())
     }
 }
 
@@ -98,12 +136,12 @@ fn main() -> io::Result<()> {
 // see https://oswalt.dev/2021/06/polymorphism-in-rust/ for signature explanation
 fn move_crane(crate_mover: &dyn CrateMover) -> Result<String, MoveCratesError> {
     if let Some((crates, moves)) = CRATES.split_once("\n\n") {
-        let mut stacks = parse_stacks(crates);
+        let mut stacks = parse_stacks(crates)?;
         let moves = parse_moves(moves).unwrap();
 
-        moves.iter().for_each(|m| {
-            crate_mover.interpret_move(m, &mut stacks);
-        });
+        for a_move in moves {
+            crate_mover.interpret_move(&a_move, &mut stacks)?;
+        }
 
         Ok(stacks
             .iter()
@@ -124,7 +162,7 @@ fn parse_moves(moves: &str) -> Result<Vec<Move>, MoveCratesError> {
         .collect::<Result<Vec<Move>, MoveCratesError>>()
 }
 
-fn parse_stacks(crates: &str) -> Vec<Vec<&str>> {
+fn parse_stacks(crates: &str) -> Result<Vec<Vec<&str>>, MoveCratesError> {
     lazy_static! {
         static ref INDEXES: Regex = Regex::new(r"\s+(\d)").unwrap();
         static ref CRATES_LINE: Regex = Regex::new(r"(\s{3}|\[([A-Z])\])\s?").unwrap();
@@ -134,7 +172,7 @@ fn parse_stacks(crates: &str) -> Vec<Vec<&str>> {
         .lines()
         .last()
         .map(|l| INDEXES.captures_iter(l).collect::<Vec<_>>().len())
-        .unwrap();
+        .ok_or(MoveCratesError::BadInput)?;
 
     let mut stacks: Vec<Vec<&str>> = vec![Vec::<&str>::new(); num_of_stacks];
 
@@ -145,7 +183,8 @@ fn parse_stacks(crates: &str) -> Vec<Vec<&str>> {
             }
         }
     }
-    stacks
+
+    Ok(stacks)
 }
 
 #[cfg(test)]
